@@ -9,9 +9,18 @@ interface FileUploadProps {
 const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, loading }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+ const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type === "text/csv") {
+    if (!file) return;
+
+    const validTypes = [
+      "text/csv",
+      "application/csv",
+      "text/plain",
+      "application/vnd.ms-excel"
+    ];
+
+    if (validTypes.includes(file.type) || file.name.toLowerCase().endsWith(".csv")) {
       onFileUpload(file);
     } else {
       alert("Please select a valid CSV file");
