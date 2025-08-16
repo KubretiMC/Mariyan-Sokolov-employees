@@ -22,40 +22,28 @@ app.use(express.json());
 const upload = multer({ dest: '../uploads/' });
 
 // Helper function to parse date in various formats
-function parseDate(dateStr: string): Moment {
+function parseDate(dateStr: string, fieldName: 'DateFrom' | 'DateTo'): Moment {
   if (!dateStr || dateStr.toLowerCase() === 'null' || dateStr.trim() === '') {
-    return moment(); // Return today's date for NULL values
+    if (fieldName === 'DateFrom') {
+      throw new Error('DateFrom cannot be null or empty');
+    }
+    return moment(); // DateTo defaults to today for NULL values
   }
-  
-  // Clean the date string
+
   const cleanDateStr = dateStr.trim();
-  
-  // Try different date formats
   const formats = [
-    'YYYY-MM-DD',
-    'MM/DD/YYYY',
-    'DD/MM/YYYY',
-    'YYYY/MM/DD',
-    'MM-DD-YYYY',
-    'DD-MM-YYYY',
-    'DD.MM.YYYY',
-    'MM.DD.YYYY',
-    'YYYY.MM.DD'
+    'YYYY-MM-DD', 'MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY/MM/DD',
+    'MM-DD-YYYY', 'DD-MM-YYYY', 'DD.MM.YYYY', 'MM.DD.YYYY', 'YYYY.MM.DD'
   ];
-  
+
   for (const format of formats) {
     const parsed = moment(cleanDateStr, format, true);
-    if (parsed.isValid()) {
-      return parsed;
-    }
+    if (parsed.isValid()) return parsed;
   }
-  
-  // If no format matches, try moment's default parsing
+
   const defaultParsed = moment(cleanDateStr);
-  if (defaultParsed.isValid()) {
-    return defaultParsed;
-  }
-  
+  if (defaultParsed.isValid()) return defaultParsed;
+
   throw new Error(`Invalid date format: ${dateStr}`);
 }
 
@@ -79,8 +67,8 @@ function processEmployeeData(data: CSVRow[]): Collaboration[] {
   data.forEach(row => {
     const empId = row.EmpID.toString().trim();
     const projectId = row.ProjectID.toString().trim();
-    const dateFrom = parseDate(row.DateFrom);
-    const dateTo = parseDate(row.DateTo);
+    const dateFrom = parseDate(row.DateFrom, 'DateFrom');
+    const dateTo = parseDate(row.DateTo, 'DateTo');
     
     if (!employeeProjects[empId]) {
       employeeProjects[empId] = [];
@@ -107,15 +95,15 @@ function processEmployeeData(data: CSVRow[]): Collaboration[] {
       emp1Projects.forEach(proj1 => {
         emp2Projects.forEach(proj2 => {
           if (proj1.projectId === proj2.projectId) {
+            const collabKey = `${emp1}-${emp2}-${proj1.projectId}`;
             const overlap = calculateOverlap(
               proj1.dateFrom, proj1.dateTo,
               proj2.dateFrom, proj2.dateTo
             );
             
             if (overlap > 0) {
-              const key = `${emp1}-${emp2}`;
-              if (!collaborations.has(key)) {
-                collaborations.set(key, {
+              if (!collaborations.has(collabKey)) {
+                collaborations.set(collabKey, {
                   emp1,
                   emp2,
                   totalDays: 0,
@@ -123,7 +111,7 @@ function processEmployeeData(data: CSVRow[]): Collaboration[] {
                 });
               }
               
-              const collab = collaborations.get(key);
+              const collab = collaborations.get(collabKey);
               if (collab) {
                 collab.totalDays += overlap;
                 collab.projects.push({
@@ -138,7 +126,23 @@ function processEmployeeData(data: CSVRow[]): Collaboration[] {
     }
   }
   
-  return Array.from(collaborations.values());
+  // At the end, merge same employee pairs across different projects:
+  const merged = new Map<string, Collaboration>();
+  for (const collab of collaborations.values()) {
+    const pairKey = `${collab.emp1}-${collab.emp2}`;
+    if (!merged.has(pairKey)) merged.set(pairKey, { emp1: collab.emp1, emp2: collab.emp2, totalDays: 0, projects: [] });
+    const m = merged.get(pairKey)!;
+    m.totalDays += collab.totalDays;
+
+    // Only include unique projects (merge days if same project somehow repeated)
+    collab.projects.forEach(p => {
+      const existing = m.projects.find(pr => pr.projectId === p.projectId);
+      if (existing) existing.daysWorked += p.daysWorked;
+      else m.projects.push({ ...p });
+    });
+  }
+
+  return Array.from(merged.values());
 }
 
 // API endpoint to process CSV file
