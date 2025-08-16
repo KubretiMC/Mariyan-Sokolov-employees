@@ -1,0 +1,21 @@
+{
+  "name": "employee-collaboration-tracker",
+  "version": "1.0.0",
+  "description": "Full-stack application to find employee pairs with longest collaboration time",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "cd server && npm run build && npm start",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "build": "cd client && npm run build && cd ../server && npm run build",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "build-all": "npm run install-all && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "keywords": ["nodejs", "react", "typescript", "csv", "employee", "collaboration"],
+  "author": "",
+  "license": "MIT"
+}
