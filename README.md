@@ -95,13 +95,13 @@ A sample CSV file (`sample-data.csv`) is included for testing purposes.
 
 - **Backend**: Node.js, TypeScript, Express.js, Multer, CSV-Parser, Moment.js
 - **Frontend**: React, TypeScript, CSS3
-- **Development**: Nodemon, Concurrently, ts-node
 
 ## Algorithm
 
 1. Parse CSV data and handle various date formats
 2. Group projects by employee ID
 3. For each pair of employees, find common projects
-4. Calculate overlapping work periods using date ranges
-5. Sum total collaboration days across all common projects
-6. Return the pair with the longest total collaboration time
+4. For each common project, calculate overlapping work periods using date ranges.
+5. Merge multiple rows of the same project for a pair to avoid double counting.
+6. Sum total collaboration days across all common projects for the pair.
+7. Return the pair(s) with the longest total collaboration time.
